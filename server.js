@@ -1,13 +1,8 @@
-const cors = require('cors');
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Используйте cors
+// Использование CORS
 app.use(cors({
     origin: '*', // Замените на адрес вашего клиента
     methods: ['GET', 'POST'],
@@ -18,25 +13,28 @@ app.get('/', (req, res) => {
     res.send('Server is running');
 });
 
-// Обработка соединений
 io.on('connection', (socket) => {
     console.log('A user connected');
 
-    socket.on('chatMessage', (message) => {
-        // Рассылаем сообщение всем подключенным пользователям
-        socket.broadcast.emit('chatMessage', message);
+    socket.on('joinChannel', ({ channelId }) => {
+        if (!channelId) return;
+    
+        socket.join(channelId);
+    
+        console.log(`User joined channel ${channelId}`);
     });
 
-    socket.on('offer', (offer) => {
-        socket.broadcast.emit('offer', offer);
+    socket.on('leaveChannel', ({ channelId }) => {
+        if (!channelId) return;
+    
+        socket.leave(channelId);
+    
+        console.log(`User left channel ${channelId}`);
     });
 
-    socket.on('answer', (answer) => {
-        socket.broadcast.emit('answer', answer);
-    });
-
-    socket.on('candidate', (candidate) => {
-        socket.broadcast.emit('candidate', candidate);
+    socket.on('chatMessage', (data) => {
+        data.channelId = data.channelId || '';
+        socket.to(data.channelId).emit('chatMessage', data);
     });
 
     socket.on('disconnect', () => {
